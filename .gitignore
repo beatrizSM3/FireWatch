@@ -2,3 +2,7 @@
 
 # dados brutos do FIRMS (pesados demais pro GitHub)
 *.csv
+
+# pastas de download do FIRMS (só teriam o Readme.txt sem os CSVs)
+data/raw/nasa/*
+!data/raw/nasa/.gitkeep
