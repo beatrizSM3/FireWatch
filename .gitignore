@@ -6,3 +6,8 @@
 # pastas de download do FIRMS (só teriam o Readme.txt sem os CSVs)
 data/raw/nasa/*
 !data/raw/nasa/.gitkeep
+
+.claude
+PLANO.md
+PLANO_DIVIDIDO.md
+PLANO2.md
