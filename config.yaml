@@ -1,0 +1,22 @@
+periodo_historico: [2019, 2025]
+ano_em_curso: 2026
+data_inicio_dados: "2019-01-01"
+data_fim_dados: "2026-11-14"
+celula_m: 1000                 # tamanho da célula
+fuso_horas: -3                 # UTC -> horário de Brasília
+crs_metros: "EPSG:5880"
+filtros:
+  viirs_confianca: ["n", "h"]
+  modis_confianca_min: 30
+disponibilidade:
+  limiar_parcial: 0.20         # < 20% do satélite irmão = "parcial"
+  minimo_irmao: 1000
+calibracao_anos: [2019, 2022]
+estrato_minimo_celulas: 200
+cobertura_reduzida: 0.20       # mês com > 20% de dias sem dado
+mif_data_corte: "07-15"
+territorio_entorno_m: 10000
+territorio_area_min_km2: 10
+territorio_simplificar_m: 100
+focos_limite_linhas: 500000
+duckdb_memoria: "1.5GB"
