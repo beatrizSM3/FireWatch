@@ -1,0 +1,21 @@
+# Tema do app FireWatch (Parte C). O CSS fino fica em app/estilo.py.
+[theme]
+base = "light"
+primaryColor = "#9E2622"
+backgroundColor = "#FFF3E2"
+secondaryBackgroundColor = "#FBE7B5"
+textColor = "#2A1A17"
+baseRadius = "full"
+font = "Lexend:https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap"
+headingFont = "Lexend:https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap"
+
+[client]
+toolbarMode = "minimal"
+showSidebarNavigation = false
+
+[server]
+runOnSave = false
+headless = true
+
+[browser]
+gatherUsageStats = false

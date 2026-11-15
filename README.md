@@ -1,10 +1,10 @@
-# FireWatch — Partes A (Dados) e B (Harmonização e indicadores)
+# FireWatch — Partes A (Dados), B (Harmonização e indicadores) e C (Aplicativo web)
 
-Este repositório tem as entregas das **Partes A e B do plano dividido**. A Parte A transformou os 28,4 milhões de focos do FIRMS e os shapefiles de UCs e TIs em arquivos limpos. A Parte B harmonizou os satélites numa série única (**CDeV**) e escreveu as **funções que calculam tudo que o app mostra**.
+Este repositório tem as entregas das **Partes A, B e C do plano dividido**. A Parte A transformou os 28,4 milhões de focos do FIRMS e os shapefiles de UCs e TIs em arquivos limpos. A Parte B harmonizou os satélites numa série única (**CDeV**) e escreveu as **funções que calculam tudo que o app mostra**. A Parte C é o **aplicativo web** (seção 9).
 
-**Você não precisa rodar nada.** Os arquivos de `saida/` já estão no repositório: clonou, usou.
+**Você não precisa rodar o pipeline.** Os arquivos de `saida/` já estão no repositório: clonou, instalou, abriu o app.
 
-> **Pessoa C (app):** leia as seções 1, 2, 4 e 5. Tudo que o app precisa está em `firewatch/carregar.py` (busca os dados de uma área) e `firewatch/indicadores.py` (calcula). Você **não calcula nada no app**.
+> **Quer só ver o app?** Seção 1 e depois `.venv/bin/streamlit run app/app.py`. Detalhes na [seção 9](#9-parte-c-o-aplicativo-web).
 
 ---
 
@@ -24,6 +24,12 @@ Para conferir se recebeu tudo certo (≈ 5 s):
 ```
 
 > O código usa a **API do DuckDB 2.x**. Com o DuckDB 1.x, algumas funções dão erro.
+
+Para abrir o app (abre em <http://localhost:8501>):
+
+```bash
+.venv/bin/streamlit run app/app.py
+```
 
 ---
 
@@ -331,8 +337,105 @@ FireWatch/
 │   ├── carregar.py         ← B: busca os dados de uma área / território (leitura, sem cálculo)
 │   ├── indicadores.py      ← B: funções puras — calendário, termômetro, 2026, MIF, janela, honesta
 │   └── territorios.py      ← B: dentro × entorno e resumo() de um território
+├── app/                    ← C: o aplicativo web (seção 9)
+├── .streamlit/config.toml  ← C: tema do app (cores e fonte)
+├── docs/telas/             ← C: capturas de tela usadas neste README
 ├── pipeline/               ← scripts que geram saida/ (a0..a5 Parte A, b1..b5 Parte B) + rodar_pipeline.sh
 ├── tests/                  ← test_parte_a.py, test_parte_b.py
 ├── saida/                  ← arquivos gerados (no Git, prontos para usar)
 └── data/                   ← dados brutos (README próprio + auditoria)
 ```
+
+---
+
+## 9. Parte C: o aplicativo web
+
+O app responde a uma pergunta: **"o fogo desta área, agora, está normal para a época?"** Ele é feito em Streamlit e só **desenha**. Todos os números vêm de `firewatch.indicadores` e `firewatch.territorios` (Parte B).
+
+### 9.1 Como executar
+
+Depois da seção 1 (ambiente criado e `pip install -r requirements.txt`), na **raiz do projeto**:
+
+```bash
+.venv/bin/streamlit run app/app.py
+```
+
+O app abre em <http://localhost:8501>. Na primeira abertura, cada área leva cerca de 1 a 2 s; depois fica em cache.
+
+| Situação | Comando |
+|---|---|
+| Outra porta | `.venv/bin/streamlit run app/app.py --server.port 8600` |
+| Com teto de memória (máquinas com pouca RAM, ver seção 6) | `MEM=3G ./rodar.sh -m streamlit run app/app.py` |
+| Abrir para outras pessoas da rede | o Streamlit mostra a `Network URL` no terminal |
+
+Precisa de internet só para o **fundo de satélite do mapa** (Esri World Imagery) e para a fonte (Google Fonts). Sem internet, o resto funciona.
+
+### 9.2 As telas
+
+**Meu território** (tela principal). No topo, escolha o **território** (busca pelos 811 UCs e TIs do Cerrado), **outra área** (Cerrado inteiro, desenhar no mapa ou ponto + raio) e o **mês em foco**.
+
+![Meu território](docs/telas/principal.png)
+
+| Bloco | O que responde | Função usada |
+|---|---|---|
+| Cartão **2026 até 14/11** | "Este ano está fora do normal?" Posição, mediana e um ponto por ano | `ano_em_curso` |
+| Cartão do **mês em foco** | "Este mês está fora do normal?" | `termometro` |
+| Cartão **Estação de fogo** | Quando começa, quando termina e se 2026 está adiantado | `janela_critica`, `ritmo_do_ano` |
+| **Mapa** | Onde houve fogo no mês. Três camadas: **Hexágonos** (células-dia), **Anomalia** (mês × mediana 2019–2025) e **Focos** (pontos originais, VIIRS e MODIS) | leitura de `celulas_dia`, `focos_da_area` |
+| **Calendário de fogo** | Ano × mês ou ano × semana. Hachura = satélite fora do ar; tracejado = ainda sem dado; contorno = mês em foco | `calendario_mensal`, `calendario_semanal` |
+| **Acumulado do ano** | 2026 contra a mediana e a faixa mín–máx de 2019–2025 | `calendario_semanal` |
+| Botões **Boletim** e ⬇ | Página HTML para imprimir ou salvar em PDF; CSV da série mensal; CSV dos focos do mês | `focos_da_area` |
+
+**Painel de alerta.** Os 363 territórios com ≥ 10 km², ordenados pela situação de 2026. Tem busca e filtros por tipo (UC ou TI) e estado. A barra mostra a densidade de 2026 e o traço preto, a mediana; a posição ("2º de 8") aparece ao passar o mouse. A seta abre o território.
+
+![Painel de alerta](docs/telas/alerta.png)
+
+**Por sensor** (botão na tela principal). É a prova da harmonização: o MODIS bruto fica embaixo e o calibrado acompanha o VIIRS. A tela também mostra a deriva do MODIS por ano e qual satélite foi usado em cada dia (ex.: a lacuna do S-NPP em 2022).
+
+![Por sensor](docs/telas/sensor.png)
+
+**Modo MIF.** Fração do fogo depois da data de corte (padrão 15/07, ajustável de 01/06 a 31/08), semana a semana e por ano.
+
+![Modo MIF](docs/telas/mif.png)
+
+**Dentro × entorno** (só territórios). Densidade de fogo no território e no anel de 10 km, por ano.
+
+![Dentro × entorno](docs/telas/entorno.png)
+
+### 9.3 Decisões de design
+
+- **Mesma identidade do pitch.** Fundo creme `#FFF3E2`, vermelho `#9E2622` e amarelo `#FFD263`; títulos pesados em caixa alta (fonte Lexend); rótulos em pílula; blocos chapados, sem sombra; o quadrado amarelo dos slides marca os títulos dos blocos. O topo é uma faixa amarela, como a capa. O cartão do ano em curso é o bloco vermelho de destaque. Tudo isso está em `app/estilo.py` e `.streamlit/config.toml`.
+- **Pouco texto, um número por bloco, com espaço entre os blocos.** Cada bloco responde a uma pergunta. Detalhes (mediana, posição, valores) ficam no *tooltip*: passe o mouse no calendário, no mapa, nos pontos e nas barras.
+- **Cores dos dados com função fixa.** A rampa de fogo vai do amarelo ao vinho, nas cores da marca. Azul = VIIRS, dentro e precoce. Laranja = MODIS calibrado, entorno e tardio. Cinza pontilhado = MODIS bruto. O par azul × laranja foi validado para daltonismo. A situação no histórico usa uma escala que diverge da mediana (vinho **recorde** · vermelho **acima** · azul **abaixo** · azul-escuro **abaixo do mínimo**) e sempre vem escrita no selo: nunca só a cor.
+- **"Sem dado" nunca parece "zero".** Zero fogo é creme; satélite fora do ar é hachurado; mês futuro é tracejado.
+- **Rampa de calor com raiz quadrada.** Os meses chuvosos não somem ao lado de setembro.
+- **Avisos obrigatórios sempre visíveis** (seção 4.6): histórico curto, 2026 preliminar, limite aproximado, "comparação, não causa", "época, não intenção".
+- **O link guarda o lugar.** A tela, a área, o mês e a data de corte ficam na URL (`?v=mif&a=UC-0000.17.1486&m=2026-09&c=07-15`). Dá para compartilhar o link ou recarregar a página sem perder nada.
+- **Funciona no celular.** As colunas viram uma coluna só.
+
+### 9.4 Organização do código
+
+```
+app/
+├── app.py           ← ponto de entrada: topo, estado da URL e escolha da tela
+├── estado.py        ← parâmetros da URL (v, a, m, c) e navegação
+├── dados.py         ← a área escolhida, leituras com cache e hexágonos do mapa (sem indicadores)
+├── estilo.py        ← cores, CSS, tema dos gráficos e formatação pt-BR (3.120 · 2,5)
+├── componentes.py   ← calendário, cartões, barras e mapa base
+└── telas/
+    ├── territorio.py   ← Meu território
+    ├── alerta.py       ← Painel de alerta
+    ├── sensor.py       ← Por sensor
+    ├── mif.py          ← Modo MIF
+    ├── entorno.py      ← Dentro × entorno
+    ├── area.py         ← "Outra área": Cerrado, desenho, ponto + raio
+    └── boletim.py      ← boletim em HTML
+```
+
+Para acrescentar um número: crie a função em `firewatch/indicadores.py` (Parte B) e só a **mostre** numa tela. O app não calcula indicadores.
+
+### 9.5 Limites conhecidos
+
+- **Focos no Cerrado inteiro:** a camada "Focos" e o CSV dos focos ficam desligados para o bioma (são milhões de pontos). Para eles, escolha uma área menor.
+- **Áreas desenhadas** ficam guardadas na memória do servidor. Se o servidor reiniciar, o link `?a=geo:…` volta para o território padrão.
+- **Validação da Pessoa D:** quando `saida/validacao.csv` existir, o cartão "Erro calibrado" da tela Por sensor passa a mostrar o erro do teste do ano deixado de fora.
